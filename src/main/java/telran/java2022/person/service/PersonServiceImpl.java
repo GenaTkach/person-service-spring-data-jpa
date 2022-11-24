@@ -68,14 +68,18 @@ public class PersonServiceImpl implements PersonService {
 
     @Override
     public Iterable<PersonDto> findPersonsByCity(String city) {
-	ArrayList<PersonDto> list = repository.findAllByAddressCity(city);
-	return list;
+	return repository.findAllByAddressCity(city)
+		.stream()
+		.map(p -> mapper.map(p, PersonDto.class))
+		.toList();
     }
 
     @Override
     public Iterable<PersonDto> findPersonsByName(String name) {
-	ArrayList<PersonDto> list = repository.findPersonsByName(name);
-	return list;
+	return repository.findPersonsByName(name)
+		.stream()
+		.map(p -> mapper.map(p, PersonDto.class))
+		.collect(Collectors.toList());
     }
 
 //    @Override
