@@ -2,7 +2,6 @@ package telran.java2022.person.model;
 
 import java.time.LocalDate;
 
-import javax.persistence.Embedded;
 import javax.persistence.Entity;
 import javax.persistence.Id;
 import javax.persistence.Table;

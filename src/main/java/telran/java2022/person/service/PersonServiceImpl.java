@@ -1,15 +1,11 @@
 package telran.java2022.person.service;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
-
-import javax.transaction.Transactional;
 
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import lombok.RequiredArgsConstructor;
 import telran.java2022.person.dao.PersonRepository;
@@ -27,7 +23,12 @@ public class PersonServiceImpl implements PersonService {
     final ModelMapper mapper;
 
     @Override
+    @Transactional
     public Boolean addPerson(PersonDto personDto) {
+	// Проверка если уже есть такой пользователь по id
+	if (repository.existsById(personDto.getId())) {
+	    return false;
+	}
 	repository.save(mapper.map(personDto, Person.class));
 	return true;
     }
@@ -40,6 +41,7 @@ public class PersonServiceImpl implements PersonService {
     }
 
     @Override
+    @Transactional
     public PersonDto removePerson(Integer id) {
 	Person person = repository.findById(id)
 		.orElseThrow(PersonNotFoundException::new);
@@ -48,53 +50,58 @@ public class PersonServiceImpl implements PersonService {
     }
 
     @Override
+    @Transactional
     public PersonDto updatePersonName(Integer id, String name) {
 	Person person = repository.findById(id)
 		.orElseThrow(PersonNotFoundException::new);
 	person.setName(name);
-	repository.save(person);
 	return mapper.map(person, PersonDto.class);
     }
 
     @Override
+    @Transactional
     public PersonDto updatePersonAddress(Integer id, AddressDto addressDto) {
 	Person person = repository.findById(id)
 		.orElseThrow(PersonNotFoundException::new);
 	Address address = mapper.map(addressDto, Address.class);
 	person.setAddress(address);
-	repository.save(person);
 	return mapper.map(person, PersonDto.class);
     }
 
     @Override
+    // Транзакция может проходить несколькими пользователями, потому что READ ONLY.
+    @Transactional(readOnly = true)
     public Iterable<PersonDto> findPersonsByCity(String city) {
 	return repository.findAllByAddressCity(city)
-		.stream()
-		.map(p -> mapper.map(p, PersonDto.class))
-		.toList();
-    }
-
-    @Override
-    public Iterable<PersonDto> findPersonsByName(String name) {
-	return repository.findPersonsByName(name)
-		.stream()
 		.map(p -> mapper.map(p, PersonDto.class))
 		.collect(Collectors.toList());
     }
 
-//    @Override
-//    public Iterable<PersonDto> findPersonsBetweenAges(Integer minAge, Integer maxAge) {
-//	ArrayList<PersonDto> list = repository.findByBirthDateBetween(LocalDate.now()
-//		.minusYears(maxAge),
-//		LocalDate.now()
-//			.minusYears(minAge));
-//	return list;
-//    }
+    @Override
+    // Транзакция может проходить несколькими пользователями, потому что READ ONLY.
+    @Transactional(readOnly = true)
+    public Iterable<PersonDto> findPersonsByName(String name) {
+	return repository.findPersonsByName(name)
+		.map(p -> mapper.map(p, PersonDto.class))
+		.collect(Collectors.toList());
+    }
 
-//    @Override
-//    public Iterable<CityPopulationDto> getCitiesPopulation() {
-//	ArrayList<CityPopulationDto> list = repository.findAllCitiesByPopulation();
-//	return list;
-//    }
+    @Override
+    // Транзакция может проходить несколькими пользователями, потому что READ ONLY.
+    @Transactional(readOnly = true)
+    public Iterable<PersonDto> findPersonsBetweenAges(Integer minAge, Integer maxAge) {
+	LocalDate from = LocalDate.now()
+		.minusYears(maxAge);
+	LocalDate to = LocalDate.now()
+		.minusYears(minAge);
 
+	return repository.findByBirthDateBetween(from, to)
+		.map(p -> mapper.map(p, PersonDto.class))
+		.collect(Collectors.toList());
+    }
+
+    @Override
+    public Iterable<CityPopulationDto> getCitiesPopulation() {
+	return repository.getCitiesPopulation();
+    }
 }
