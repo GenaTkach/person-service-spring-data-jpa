@@ -42,7 +42,7 @@ public class PersonServiceImpl implements PersonService, CommandLineRunner {
     public PersonDto findPersonById(Integer id) {
 	Person person = repository.findById(id)
 		.orElseThrow(PersonNotFoundException::new);
-	return mapper.map(person, PersonDto.class);
+	return mapper.map(person, getDtoClass(person));
     }
 
     @Override
@@ -51,7 +51,7 @@ public class PersonServiceImpl implements PersonService, CommandLineRunner {
 	Person person = repository.findById(id)
 		.orElseThrow(PersonNotFoundException::new);
 	repository.delete(person);
-	return mapper.map(person, PersonDto.class);
+	return mapper.map(person, getDtoClass(person));
     }
 
     @Override
@@ -60,7 +60,7 @@ public class PersonServiceImpl implements PersonService, CommandLineRunner {
 	Person person = repository.findById(id)
 		.orElseThrow(PersonNotFoundException::new);
 	person.setName(name);
-	return mapper.map(person, PersonDto.class);
+	return mapper.map(person, getDtoClass(person));
     }
 
     @Override
@@ -70,7 +70,7 @@ public class PersonServiceImpl implements PersonService, CommandLineRunner {
 		.orElseThrow(PersonNotFoundException::new);
 	Address address = mapper.map(addressDto, Address.class);
 	person.setAddress(address);
-	return mapper.map(person, PersonDto.class);
+	return mapper.map(person, getDtoClass(person));
     }
 
     @Override
@@ -78,7 +78,7 @@ public class PersonServiceImpl implements PersonService, CommandLineRunner {
     @Transactional(readOnly = true)
     public Iterable<PersonDto> findPersonsByCity(String city) {
 	return repository.findAllByAddressCity(city)
-		.map(p -> mapper.map(p, PersonDto.class))
+		.map(p -> mapper.map(p, getDtoClass(p)))
 		.collect(Collectors.toList());
     }
 
@@ -87,7 +87,7 @@ public class PersonServiceImpl implements PersonService, CommandLineRunner {
     @Transactional(readOnly = true)
     public Iterable<PersonDto> findPersonsByName(String name) {
 	return repository.findPersonsByName(name)
-		.map(p -> mapper.map(p, PersonDto.class))
+		.map(p -> mapper.map(p, getDtoClass(p)))
 		.collect(Collectors.toList());
     }
 
@@ -101,13 +101,31 @@ public class PersonServiceImpl implements PersonService, CommandLineRunner {
 		.minusYears(minAge);
 
 	return repository.findByBirthDateBetween(from, to)
-		.map(p -> mapper.map(p, PersonDto.class))
+		.map(p -> mapper.map(p, getDtoClass(p)))
 		.collect(Collectors.toList());
     }
 
     @Override
     public Iterable<CityPopulationDto> getCitiesPopulation() {
 	return repository.getCitiesPopulation();
+    }
+
+    @Override
+    // Транзакция может проходить несколькими пользователями, потому что READ ONLY.
+    @Transactional(readOnly = true)
+    public Iterable<PersonDto> findEmployeesBySalary(int min, int max) {
+	return repository.findEmployeesBySalaryBetween(min, max)
+		.map(p -> mapper.map(p, EmployeeDto.class))
+		.collect(Collectors.toList());
+    }
+
+    @Override
+    // Транзакция может проходить несколькими пользователями, потому что READ ONLY.
+    @Transactional(readOnly = true)
+    public Iterable<PersonDto> getChildren() {
+	return repository.findAllChildren()
+		.map(p -> mapper.map(p, ChildDto.class))
+		.collect(Collectors.toList());
     }
 
     // Дефолтное добавление при старте апликации
@@ -123,17 +141,7 @@ public class PersonServiceImpl implements PersonService, CommandLineRunner {
 	repository.save(employee);
     }
 
-    @Override
-    public Iterable<PersonDto> findEmployeesBySalary(int min, int max) {
-	return null;
-    }
-
-    @Override
-    public Iterable<PersonDto> getChildren() {
-	return null;
-    }
-
-    // Метод для определения DTO
+    // Метод для определения DTO и возвращения какого-то класса Entity
     private Class<? extends Person> getModelClass(PersonDto personDto) {
 	if (personDto instanceof EmployeeDto) {
 	    return Employee.class;
@@ -142,5 +150,16 @@ public class PersonServiceImpl implements PersonService, CommandLineRunner {
 	    return Child.class;
 	}
 	return Person.class;
+    }
+
+    // Метод для определения Entity и возвращения какого-то класса DTO
+    private Class<? extends PersonDto> getDtoClass(Person person) {
+	if (person instanceof Employee) {
+	    return EmployeeDto.class;
+	}
+	if (person instanceof Child) {
+	    return ChildDto.class;
+	}
+	return PersonDto.class;
     }
 }
